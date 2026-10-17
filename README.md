@@ -1,7 +1,5 @@
 # ChatGen-RNN: Autoregressive Text Generation with Simple RNN, Bidirectional RNN, LSTM and GRU
 
-Foundations of Generative AI (ICT4403) — Assignment 2
-
 ## 1. Problem statement and objective
 Build a **word-level autoregressive text-generation system** that predicts the next word of a conversation and generates text one word at a time from a seed sequence. Four recurrent architectures — **Simple RNN, Bidirectional RNN, LSTM and GRU** — are trained under identical experimental conditions and compared
 
@@ -13,7 +11,6 @@ then the influence of the **sampling temperature** is analysed (T = 0.3, 0.7, 1.
 ## 2. Dataset
 * **Name:** Human Conversation Training Data — file `human_chat.txt`
 * **Source:** <https://www.kaggle.com/datasets/projjal1/human-conversation-training-data>
-* A copy is stored in `data/human_chat.txt` so the notebook runs out of the box. (I did not check the dataset's licence terms; if in doubt, delete the copy and download it from the link above into `data/`.)
 
 | Property | Value |
 |---|---|
@@ -34,25 +31,12 @@ Common pipeline: `Embedding(1144, 128) -> recurrent layer -> Dropout(0.3) -> Den
 | Model | Recurrent layer | Parameters |
 |---|---|---|
 | Simple RNN | `SimpleRNN(256)` | 539,000 |
-| Bidirectional RNN | `Bidirectional(SimpleRNN(256))` (reads the *context window* both ways; it never sees the word being predicted, generation is still left-to-right) | 930,424 |
+| Bidirectional RNN | `Bidirectional(SimpleRNN(256))` | 930,424 |
 | LSTM | `LSTM(256)` | 834,680 |
 | GRU | `GRU(256)` | 736,888 |
 
-**Identical training conditions:** Adam (lr 1e-3, gradient clipping 1.0), batch size 128, sparse categorical cross-entropy, at most 40 epochs with early stopping on validation loss (patience 3, best weights restored), same data and seeds. Each model is trained with **3 seeds (42, 43, 44)**; the seed-42 models are used for text generation.
 
-## 4. How to run
-```bash
-git clone <this-repo-url> && cd <repo>
-python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-jupyter notebook notebooks/autoregressive_text_generation.ipynb   # then Run All
-```
-* Works on CPU; the full run (12 trainings + generation) took about 20 minutes on a single-vCPU machine.
-* **Quick smoke test (a few minutes):** set `QUICK_RUN=1` in the environment before starting Jupyter (macOS/Linux: `QUICK_RUN=1 jupyter notebook`; Windows PowerShell: `$env:QUICK_RUN=1; jupyter notebook`). Results from this mode are not meaningful.
-* Tested with Python 3.12 and TensorFlow 2.21 (CPU). Re-running will not reproduce the numbers below bit-for-bit (floating-point differences between machines); training times depend on your hardware.
-* Outputs are written to `results/` (tables, figures, generated samples) and `models/` (seed-42 models).
-
-## 5. Results
+## 4. Results
 Mean ± std over 3 seeds, held-out **test** split. Perplexity = exp(cross-entropy per token). Baselines on the same targets: unigram 148.2, interpolated trigram 83.4.
 
 | Model | Params | Epochs run | Train time (s) | Sec/epoch | Test loss | Test perplexity | Top-1 acc (%) | Top-5 acc (%) | Train ppl |
@@ -69,7 +53,7 @@ Mean ± std over 3 seeds, held-out **test** split. Perplexity = exp(cross-entrop
 
 Raw numbers: `results/results_all_runs.csv`, `results/results_summary_table.csv`, `results/training_history.csv`.
 
-## 6. Model comparison and evaluation
+## 5. Model comparison and evaluation
 All numbers are mean ± std over 3 training seeds on the held-out test split. Reference points: the unigram baseline has perplexity 148.2 and the interpolated trigram baseline 83.4.
 
 * **The gated models win.** GRU (test perplexity 57.7) and LSTM (59.7) are clearly better than the Simple RNN (64.4) and the Bidirectional RNN (75.9). Their top-1 accuracies are 23.8 % and 23.8 % versus 22.4 % and 19.4 %. All four neural models beat the trigram baseline.
@@ -77,7 +61,7 @@ All numbers are mean ± std over 3 training seeds on the held-out test split. Re
 * **Simple RNN** is a respectable baseline but its validation loss turns upward after epoch 6, and it ends about 12 % higher in perplexity than GRU.
 * **Bidirectional RNN is the weakest and least stable** (perplexity 75.9 ± 5.2, best epoch only 3–4). Its validation loss starts rising almost immediately while training loss keeps falling fastest. Reading a *left-context* window backwards adds no information that a forward pass lacks for left-to-right prediction, yet it doubles the recurrent parameters (930 k in total) and makes overfitting easier on a 24 k-token corpus.
 
-## 7. Sampling-temperature analysis
+## 6. Sampling-temperature analysis
 Five hand-written seeds (weekend, travel, work, tiredness, food; all words in the vocabulary) were continued for 40 tokens by every model at T = 0.3, 0.7, 1.0 and 1.5, with 20 samples per seed, using the same random stream for every model at a given T. At each step the logits are divided by T, `<pad>` and `<unk>` are never sampled, and one token is drawn.
 
 Metric definitions: **distinct-2** = share of unique bigrams inside a sample (diversity; "across" = pooled over all samples); **repetition rate** = 1 − distinct-3; **loops %** = samples where a bigram occurs ≥ 3 times or a token repeats ≥ 3 times in a row; **seen-bigram %** = generated bigrams that occur in the training text (local coherence); **ref. ppl** = perplexity of the generated text under an independent trigram language model (fluency, lower is better); **valid turns %** = samples in which speaker tags strictly alternate with no empty turn (real text: about 93 %); **copied 4-gram %** = generated 4-grams found verbatim in the training set (memorisation).
@@ -123,22 +107,9 @@ Averaged over 5 seeds x 20 samples x 40 generated tokens per model and temperatu
 
 At T = 0.7 the **GRU** has the lowest reference perplexity (44.2, vs 50.3 Simple RNN, 51.3 LSTM, 75.5 Bidirectional RNN) and the highest share of seen bigrams (82.3 %). At T = 1.0 GRU and LSTM are tied (243.7 vs 246.0) and clearly ahead of the Simple RNN (315.4) and Bidirectional RNN (404.9). The Bidirectional RNN is the least fluent at every temperature >= 0.7. These generation metrics are proxies, and the differences between GRU and LSTM are small; in the samples I read, GRU and LSTM tended to give the more grammatical phrases and the Simple/Bidirectional RNNs more word salad (an impression from a limited set of samples, not a measured result), and all four models are weak at long-range coherence.
 
-## 8. Conclusion
+## 7. Conclusion
 The **GRU** is the most effective autoregressive generator for this dataset, with the **LSTM a very close second**. The GRU has the best test perplexity (57.7 ± 1.0) and top-1 accuracy (23.77 %, tied with the LSTM), the best fluency under temperature sampling at T = 0.7, and it needs roughly two-thirds of the LSTM's training time (97 s vs 153 s) and has fewer parameters. The ranking by perplexity is GRU < LSTM < Simple RNN < Bidirectional RNN, and the best sampling setting is a temperature of about 0.7 (T = 0.3 repeats, T >= 1.0 loses coherence).
 
 **Caveats.** The GRU-vs-LSTM gap is small relative to seed-to-seed variation, so the safest reading is "gated units clearly beat plain RNNs; GRU is at least as good as LSTM and cheaper to train". The corpus is tiny (24 k tokens), so no model produces topic-coherent dialogue; perplexity includes `<unk>` targets (6.6 % of training and 13 % of validation/test tokens), so the absolute values are not comparable with other corpora; the automatic generation metrics are proxies; and the qualitative comments come from one reader's inspection of the saved samples. Training times were measured on a single-vCPU CPU environment and will differ on other hardware.
 
-## 9. Repository structure
-```
-.
-├── README.md
-├── requirements.txt
-├── data/human_chat.txt                         # dataset copy (source link above)
-├── notebooks/autoregressive_text_generation.ipynb   # full implementation, executed, with outputs
-├── models/                                     # trained seed-42 models (.keras)
-├── results/
-│   ├── results_summary_table.csv, results_summary_mean_std.csv, results_all_runs.csv, training_history.csv
-│   ├── generation_metrics.csv, generated_samples.md
-│   └── fig_*.png                               # dataset overview, training curves, test metrics, temperature effects
-└── submission/                                 # Word document template for the LMS submission
 ```
