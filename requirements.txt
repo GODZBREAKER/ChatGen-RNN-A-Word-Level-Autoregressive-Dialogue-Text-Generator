@@ -1,0 +1,8 @@
+# Any TensorFlow >= 2.16 (Keras 3) should work.
+tensorflow>=2.16        # or tensorflow-cpu
+numpy>=1.24
+pandas>=2.0
+matplotlib>=3.7
+jupyter
+nbconvert
+ipykernel
